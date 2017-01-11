@@ -26,10 +26,12 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
-  <ItemGroup />
   <ItemGroup>
-    <Compile Include="get-coś.ps1" />
-    <Compile Include="Script.ps1" />
+    <Folder Include="MyFunctions\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="MyFunctions\Convert-ToLatinCharacters.ps1" />
+    <Compile Include="MyFunctions\ConvertFromPolishLetters.ps1" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Target Name="Build" />
