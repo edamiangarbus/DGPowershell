@@ -32,6 +32,8 @@
   <ItemGroup>
     <Compile Include="MyFunctions\Convert-ToLatinCharacters.ps1" />
     <Compile Include="MyFunctions\ConvertFromPolishLetters.ps1" />
+    <Compile Include="MyFunctions\Invoke-SQL-Command.ps1" />
+    <Compile Include="MyFunctions\PasswordGenerator.ps1" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Target Name="Build" />
