@@ -28,12 +28,18 @@
   </PropertyGroup>
   <ItemGroup>
     <Folder Include="MyFunctions\" />
+    <Folder Include="MyFunctions\ADUserCertOnCA\" />
+    <Folder Include="MyFunctions\ConvertFromPolishLetters\" />
+    <Folder Include="MyFunctions\Convert-ToLatinCharacters\" />
+    <Folder Include="MyFunctions\Invoke-SQL-Command\" />
+    <Folder Include="MyFunctions\PasswordGenerator\" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="MyFunctions\Convert-ToLatinCharacters.ps1" />
-    <Compile Include="MyFunctions\ConvertFromPolishLetters.ps1" />
-    <Compile Include="MyFunctions\Invoke-SQL-Command.ps1" />
-    <Compile Include="MyFunctions\PasswordGenerator.ps1" />
+    <Compile Include="MyFunctions\ADUserCertOnCA\ADUserCertOnCA.psm1" />
+    <Compile Include="MyFunctions\Convert-ToLatinCharacters\Convert-ToLatinCharacters.ps1" />
+    <Compile Include="MyFunctions\ConvertFromPolishLetters\ConvertFromPolishLetters.ps1" />
+    <Compile Include="MyFunctions\Invoke-SQL-Command\Invoke-SQL-Command.ps1" />
+    <Compile Include="MyFunctions\PasswordGenerator\PasswordGenerator.ps1" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Target Name="Build" />
