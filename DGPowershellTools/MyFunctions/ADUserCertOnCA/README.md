@@ -2,7 +2,7 @@
 #Author: Damian Garbus
 #Web: http://e-damiangarbus.pl
 
-ADUserCertOnCA.psm1
+. ADUserCertOnCA.psm1
 
 Powershell Module with 2 functions to get cert for specified Acitive Directory User issued from specified cert template
 
