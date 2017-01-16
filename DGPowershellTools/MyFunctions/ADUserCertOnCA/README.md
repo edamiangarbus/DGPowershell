@@ -9,7 +9,7 @@ Powershell Module to get cert for specified Acitive Directory User issued from s
 you have to use NetBios domain name with samaccountname in format "domain\samaccountname"
 
 #.EXAMPLE
-$ADUserLogin = "domain\"+(get-aduser user1).samaccountname
+
 
 
 
