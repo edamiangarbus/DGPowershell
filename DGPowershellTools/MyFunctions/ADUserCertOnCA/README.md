@@ -1,14 +1,14 @@
 ###Author: Damian Garbus
 ###Web: http://e-damiangarbus.pl
 
-#.SYNOPSIS
+####.SYNOPSIS
 Powershell Module to get cert for specified Acitive Directory User issued from specified cert template in CA.
 
-#.DESCRIPTION
+####.DESCRIPTION
 Powershell Module to get cert for specified Acitive Directory User issued from specified cert template in CA. In order to get cert for specified user
 you have to use NetBios domain name with samaccountname in format "domain\samaccountname"
 
-#.EXAMPLE
+####.EXAMPLE
 
 
 
@@ -19,9 +19,9 @@ you have to use NetBios domain name with samaccountname in format "domain\samacc
                     Revoke-ADUserCertonCA -CertSerialNumber $serial -ReasonCode "6";
 
                 }
-#.NOTES
+####.NOTES
 Put some notes here.
 
-#.LINK
+####.LINK
 https://github.com/edamiangarbus/DGPowershell/tree/master/DGPowershellTools/MyFunctions/ADUserCertOnCA
 http://e-damiangarbus.pl
