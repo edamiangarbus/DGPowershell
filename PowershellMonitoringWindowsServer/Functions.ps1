@@ -1,25 +1,3 @@
-Function New-ServerHealthHTMLTableCell()
-{
-	param( $lineitem )
-	
-	$htmltablecell = $null
-	
-	switch ($($reportline."$lineitem"))
-	{
-		$success {$htmltablecell = "<td class=""pass"">$($reportline."$lineitem")</td>"}
-        "Success" {$htmltablecell = "<td class=""pass"">$($reportline."$lineitem")</td>"}
-        "Pass" {$htmltablecell = "<td class=""pass"">$($reportline."$lineitem")</td>"}
-		"Warn" {$htmltablecell = "<td class=""warn"">$($reportline."$lineitem")</td>"}
-		"Access Denied" {$htmltablecell = "<td class=""warn"">$($reportline."$lineitem")</td>"}
-		"Fail" {$htmltablecell = "<td class=""fail"">$($reportline."$lineitem")</td>"}
-        "Could not test service health. " {$htmltablecell = "<td class=""warn"">$($reportline."$lineitem")</td>"}
-		"Unknown" {$htmltablecell = "<td class=""warn"">$($reportline."$lineitem")</td>"}
-		default {$htmltablecell = "<td>$($reportline."$lineitem")</td>"}
-	}
-	
-	return $htmltablecell
-}
-
 
 function Write-Feedback()
 {
@@ -241,53 +219,60 @@ function CheckServerPing {
 
 function CheckDCHealth {
     param ( 
-		[string]$Server
+		[string]$Server,
+		[string]$DependsOn
 	)
-    $DCHealth = $null
-    $servicesrunning = @()
-	$servicesnotrunning = @()
-	$dcservices = @(
-        "ntds",
-        "adws",
-        "dncache",
-        "kdc",
-        "w32time",
-        "netlogon"
-		)
-	try {
+	if ($DependsOn -eq "Pass"){
+		$DCHealth = $null
+		$servicesrunning = @()
+		$servicesnotrunning = @()
+		$dcservices = @(
+			"ntds",
+			"adws",
+			"dncache",
+			"kdc",
+			"w32time",
+			"netlogon"
+			)
+		try {
         
-		$servicestates =@(Get-WmiObject -ComputerName $server -Class Win32_Service -ErrorAction STOP | where {$dcservices -icontains $_.Name} | select name,state,startmode)
+			$servicestates =@(Get-WmiObject -ComputerName $server -Class Win32_Service -ErrorAction STOP | where {$dcservices -icontains $_.Name} | select name,state,startmode)
 
-	}
-	catch
-	{
-		
-		$DCServiceHealth = "WMIFail"
-	}
-
-    if (!($DCServiceHealth)) {
-        
-        $servicesrunning = @($servicestates | Where {$_.StartMode -eq "Auto" -and $_.State -eq "Running"})
-		$servicesnotrunning = @($servicestates | Where {$_.Startmode -eq "Auto" -and $_.State -ne "Running"})
-		if ($($servicesnotrunning.Count) -gt 0){
-
-			Write-Verbose "Service health check failed"
-		    Write-Verbose "Services not running:"
-		    foreach ($service in $servicesnotrunning)
-		    {
-		        Write-Verbose "- $($service.Name)"	
-		    }
-			$DCServiceHealth = "Fail"	
 		}
-         else {
+		catch
+		{
+		
+			$DCServiceHealth = "WMIFail"
+		}
+
+		if (!($DCServiceHealth)) {
         
-            Write-Verbose "Service health check passed"
+			$servicesrunning = @($servicestates | Where {$_.StartMode -eq "Auto" -and $_.State -eq "Running"})
+			$servicesnotrunning = @($servicestates | Where {$_.Startmode -eq "Auto" -and $_.State -ne "Running"})
+			if ($($servicesnotrunning.Count) -gt 0){
+
+				Write-Verbose "Service health check failed"
+				Write-Verbose "Services not running:"
+				foreach ($service in $servicesnotrunning)
+				{
+					Write-Verbose "- $($service.Name)"	
+				}
+				$DCServiceHealth = "Fail"	
+			}
+			 else {
+        
+				Write-Verbose "Service health check passed"
             
-            $DCServiceHealth = "Pass"
+				$DCServiceHealth = "Pass"
             
 
-        }            
-    }
+			}            
+		}
+		}
+	else {
+		$DCServiceHealth = "n/a"
+	}
+    
 
     
    return $DCServiceHealth

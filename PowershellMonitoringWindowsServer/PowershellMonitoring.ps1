@@ -24,6 +24,27 @@ param (
 
 	)
 
+	Function New-ServerHealthHTMLTableCell()
+{
+	param( $lineitem )
+	
+	$htmltablecell = $null
+	
+	switch ($($reportline."$lineitem"))
+	{
+		$success {$htmltablecell = "<td class=""pass"">$($reportline."$lineitem")</td>"}
+        "Success" {$htmltablecell = "<td class=""pass"">$($reportline."$lineitem")</td>"}
+        "Pass" {$htmltablecell = "<td class=""pass"">$($reportline."$lineitem")</td>"}
+		"Warn" {$htmltablecell = "<td class=""warn"">$($reportline."$lineitem")</td>"}
+		"Access Denied" {$htmltablecell = "<td class=""warn"">$($reportline."$lineitem")</td>"}
+		"Fail" {$htmltablecell = "<td class=""fail"">$($reportline."$lineitem")</td>"}
+        "Could not test service health. " {$htmltablecell = "<td class=""warn"">$($reportline."$lineitem")</td>"}
+		"Unknown" {$htmltablecell = "<td class=""warn"">$($reportline."$lineitem")</td>"}
+		default {$htmltablecell = "<td>$($reportline."$lineitem")</td>"}
+	}
+	
+	return $htmltablecell
+}
 
 #...................................
 # Variables
@@ -116,17 +137,22 @@ if ($($ActualMonitoringResult.Count) -ne $ServerCount) {
 		Write-Host "Obecny status Feedback: $reciveCount/$ServerCount"
 		} 
 		while ($reciveCount -ne $ServerCount -and $curCheck -ne $TimeOut)
+	$FirstColumnName = ($ActualMonitoringResult | gm -MemberType NoteProperty).Name | select -First 1
+	$ResultProperties = ($ActualMonitoringResult | gm -MemberType NoteProperty).Name | ? {$_ -ne $FirstColumnName}
+	
+	if ($($ActualMonitoringResult.Count) -lt $ServerCount)  {
 		
-	if ($($ImportDataFromCSV.Count) -ne $ServerCount)  {
-		
-		$Server_list | % { 
-			if ($($ActualMonitoringResult.Server) -notcontains $_) {
+		Foreach ($Server in $Server_list) { 
+			if ($($ActualMonitoringResult.Server) -notcontains $Server) {
 				$serverObj = New-Object PSObject
-	            $serverObj | Add-Member NoteProperty -Name "Server" -Value $server
-                $serverObj | Add-Member NoteProperty -Name "DNS" -Value "NoResult"
-	            $serverObj | Add-Member NoteProperty -Name "Ping" -Value "NoResult"
-				$serverObj | Add-Member NoteProperty -Name "DCServices" -Value "NoResult"
-			
+				$serverObj | Add-Member NoteProperty -Name $FirstColumnName -Value $server
+				foreach ($ResultProperty in $ResultProperties) {
+					$serverObj | Add-Member NoteProperty -Name $ResultProperty -Value "NoResult"
+				}
+				
+				$serverObj | Export-Csv "$scriptPath\temp\MonitorResult.csv" -Delimiter ";" -NoTypeInformation -Append
+				
+
 			}
 		
 		}
@@ -135,8 +161,8 @@ if ($($ActualMonitoringResult.Count) -ne $ServerCount) {
 
 }
 
-
-$ResultProperties = ($ActualMonitoringResult | gm -MemberType NoteProperty).Name | ? {$_ -ne "Server"}
+$ActualMonitoringResult = Import-Csv "$scriptPath\temp\MonitorResult.csv" -Delimiter ";"
+$ResultProperties = ($ActualMonitoringResult | gm -MemberType NoteProperty).Name | ? {$_ -ne $FirstColumnName}
 
 foreach ($Property in $ResultProperties) {
 	
@@ -145,7 +171,7 @@ foreach ($Property in $ResultProperties) {
 		foreach ($ActualFailedLine in $ActualFailed) {
 		
 			$serverObj = New-Object PSObject
-			$serverObj | Add-Member NoteProperty -Name Server -Value $($ActualFailedLine.Server)
+			$serverObj | Add-Member NoteProperty -Name Server -Value $($ActualFailedLine.$FirstColumnName)
 			$serverObj | Add-Member NoteProperty -Name Failed -Value $Property
 			$serverObj | Export-Csv "$scriptPath\temp\FailedResult.csv" -Delimiter ";" -NoTypeInformation -Append
 		}
@@ -155,25 +181,29 @@ foreach ($Property in $ResultProperties) {
 }
 
 #Create Alert Summarry
-$ActualFailed = Import-Csv "$scriptPath\temp\FailedResult.csv" -Delimiter ";"
-[array]$AlertSummary = @()
-foreach ($FailedServer in $ActualFailed) {
-	Write-Host "FailedServer: $($FailedServer.Server)" -ForegroundColor Green
-	$check = $LastFailed | ? {$_.Server -eq $($FailedServer.Server) -and $_.Failed -eq $($FailedServer.Failed)}
+if (Test-Path "$scriptPath\temp\FailedResult.csv"){
+	$ActualFailed = Import-Csv "$scriptPath\temp\FailedResult.csv" -Delimiter ";"
+
+
+	[array]$AlertSummary = @()
+	foreach ($FailedServer in $ActualFailed) {
+		Write-Host "FailedServer: $($FailedServer.Server)" -ForegroundColor Green
+		$check = $LastFailed | ? {$_.Server -eq $($FailedServer.Server) -and $_.Failed -eq $($FailedServer.Failed)}
 	
-	if($check -ne $null){
-		$Alert = $true
-		$AlertServerSummary = New-Object PSObject
-		$AlertServerSummary | Add-Member NoteProperty -Name Server -Value $($FailedServer.Server)
-		$AlertServerSummary | Add-Member NoteProperty -Name Failed -Value $($FailedServer.Failed)
+		if($check -ne $null){
+			$AlertServerSummary = New-Object PSObject
+			$AlertServerSummary | Add-Member NoteProperty -Name Server -Value $($FailedServer.Server)
+			$AlertServerSummary | Add-Member NoteProperty -Name Failed -Value $($FailedServer.Failed)
 
-		$AlertSummary = $AlertSummary + $AlertServerSummary
+			$AlertSummary = $AlertSummary + $AlertServerSummary
 
-	 }
+		 }
 
+	}
 }
+$AlertSummary 
 
-$AlertSummary
+$ActualMonitoringResult = $ActualMonitoringResult | Sort-Object -Property $ResultProperties
 
 
 if ($ReportMode -or $SendEmail)
@@ -202,7 +232,8 @@ if ($ReportMode -or $SendEmail)
 				<h3 align=""center"">Generated: $reportime</h3>"
 
 	#Check if the server summary has 1 or more entries
-	if ($($serversummary.count) -gt 0)
+	
+	if ($($AlertSummary.count) -gt 0)
 	{
 		#Set alert flag to true
 		$alerts = $true
@@ -212,86 +243,49 @@ if ($ReportMode -or $SendEmail)
 						<p>The following server errors and warnings were detected.</p>
 						<p>
 						<ul>"
-		foreach ($reportline in $serversummary)
+		foreach ($reportline in $AlertSummary)
 		{
-			$serversummaryhtml +="<li>$reportline</li>"
+			$l = $reportline.Server + " - " + $reportline.Failed + " - Fail"
+			$serversummaryhtml +="<li>$l</li>"
 		}
 		$serversummaryhtml += "</ul></p>"
-		$alerts = $true
+		
 	}
 	else
 	{
 		#Generate the HTML to show no alerts
 		$serversummaryhtml = "<h3>Servers Errors</h3>
-						<p>No Exchange server health errors or warnings.</p>"
+						<p>No Server health errors or warnings.</p>"
 	}
 	
 	
-
-
-	#Exchange Server Health Report Table Header
-	$htmltableheader = "<h3>Exchange Server Health</h3>
+	$htmltableheader = "<h3>Server Health</h3>
 						<p>
 						<table>
 						<tr>
-						<th>Server</th>
-						<th>DNS</th>
-						<th>Ping</th>
-						<th>Uptime (hrs)</th>
-						<th>DC Services</th>
-						<th>FileServer Services</th>
-						<th>Hyper-V Services</th>
-						<th>DHCP Services</th>
-						<th>Print Services</th>
-						</tr>"
+						<th>$FirstColumnName</th>"
+	foreach ($ResultProperty in $ResultProperties){
+		$htmltableheader += "<th>" + $ResultProperty + "</th>"
+	}
+	$htmltableheader += "</tr>"
 
-	#Exchange Server Health Report Table
+	#Server Health Report Table
 	$serverhealthhtmltable = $serverhealthhtmltable + $htmltableheader					
-						
-	foreach ($reportline in $report)
-	{
+    foreach ($reportline in $ActualMonitoringResult){
 		$htmltablerow = "<tr>"
-		$htmltablerow += "<td>$($reportline.server)</td>"
-        $htmltablerow += (New-ServerHealthHTMLTableCell "dns")
-		$htmltablerow += (New-ServerHealthHTMLTableCell "ping")
-		
-		if ($($reportline."uptime (hrs)") -eq "Access Denied")
-		{
-			$htmltablerow += "<td class=""warn"">Access Denied</td>"		
+		$htmltablerow += "<td>$($reportline.$FirstColumnName)</td>"
+		foreach ($Property in $ResultProperties) {
+			$htmltablerow += (New-ServerHealthHTMLTableCell $Property)
 		}
-        elseif ($($reportline."uptime (hrs)") -eq $string17)
-        {
-            $htmltablerow += "<td class=""warn"">$string17</td>"
-        }
-		else
-		{
-			$hours = [int]$($reportline."uptime (hrs)")
-			if ($hours -le 1)
-			{
-				$htmltablerow += "<td class=""warn"">$hours</td>"
-			}
-			else
-			{
-				$htmltablerow += "<td class=""pass"">$hours</td>"
-			}
-		}
-
-		$htmltablerow += (New-ServerHealthHTMLTableCell "DC Services")
-		$htmltablerow += (New-ServerHealthHTMLTableCell "FileServer Services")
-		$htmltablerow += (New-ServerHealthHTMLTableCell "Hyper-V Services")
-		$htmltablerow += (New-ServerHealthHTMLTableCell "DHCP Services")
-		$htmltablerow += (New-ServerHealthHTMLTableCell "Print Services")
 		$htmltablerow += "</tr>"
-		
 		$serverhealthhtmltable = $serverhealthhtmltable + $htmltablerow
 	}
-
 	$serverhealthhtmltable = $serverhealthhtmltable + "</table></p>"
 
 	$htmltail = "</body>
 				</html>"
-
-	$htmlreport = $htmlhead + $serversummaryhtml + $serverhealthhtmltable + $htmltail
+	$htmlreport = $htmlhead + $serversummaryhtml + $serverhealthhtmltable + $htmltail						
+	
 	
 	if ($ReportMode -or $ReportFile)
 	{
@@ -300,10 +294,10 @@ if ($ReportMode -or $SendEmail)
 
 	if ($SendEmail)
 	{
-		if ($alerts -eq $false -and $AlertsOnly -eq $true)
+		if ($alerts -ne $true -and $AlertsOnly -eq $true)
 		{
 			#Do not send email message
-			Write-Host $string19
+			Write-Host "Alerts Only"
 			if ($Log) {Write-Logfile $string19}
 		}
 		else

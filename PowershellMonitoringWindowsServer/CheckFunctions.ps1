@@ -11,15 +11,10 @@ if (Test-Path "$scriptPath\temp\MonitorResult.csv"){
 }
 
 $serverObj = New-Object PSObject
-$serverObj | Add-Member NoteProperty -Name "Server" -Value $server
-$serverObj | Add-Member NoteProperty -Name "DNS" -Value (CheckResolveDNSName -ServerName $Server)
-$serverObj | Add-Member NoteProperty -Name "Ping" -Value (CheckServerPing -Server $Server)
-if ($serverObj.Ping -eq "Pass") {
-	$serverObj | Add-Member NoteProperty -Name "DCServices" -Value (CheckDCHealth -Server $Server)
-}
-else {
-	$serverObj | Add-Member NoteProperty -Name "DCServices" -Value "n/a"
-}
+$serverObj | Add-Member NoteProperty -Name "1-Server" -Value $server
+$serverObj | Add-Member NoteProperty -Name "2-DNS" -Value (CheckResolveDNSName -ServerName $Server)
+$serverObj | Add-Member NoteProperty -Name "3-Ping" -Value (CheckServerPing -Server $Server)
+$serverObj | Add-Member NoteProperty -Name "4-DCServices" -Value (CheckDCHealth -Server $Server -DependsOn $serverObj."3-Ping" )
 
 
 
